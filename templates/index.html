@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Monitor</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Adicione esta linha -->
+</head>
+<style>
+    #alert {
+        font-weight: bold;
+        font-family: 'Courier New', Courier, monospace;
+        color: red;
+        position:absolute;
+        top: 10px;
+        right: 10px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f8d7da;
+        border: 1px solid #f5c2c7;
+        margin-bottom: 10px; /* Adicione margem inferior para afastar do gráfico */
+    }
+</style>
+<body>
+    <h1>System Monitor</h1>
+    <p>CPU Usage: <span id="cpu"></span>%</p>
+    <p>Memory Usage: <span id="memory"></span>%</p>
+<div style="width: 80%;">
+    <canvas id="memoryChart"></canvas>
+</div>
+<script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        // Receber dados do servidor e atualizar a interface
+        socket.on('update_data', function(data) {
+            document.getElementById('cpu').innerText = data.cpu_percent.toFixed(2);
+            document.getElementById('memory').innerText = data.memory_percent.toFixed(2);
+        });
+        
+        var memoryChart = new Chart(document.getElementById('memoryChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Memory Usage (%)',
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderWidth: 1,
+                        data: [],
+                        fill: true,
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: [{
+                            type: 'realtime',
+                            realtime: {
+                                onRefresh: function (chart) {
+                                    chart.data.labels.push(new Date().toLocaleTimeString());
+                                    chart.data.datasets[0].data.push(socket.memory_percent);
+                                },
+                                delay: 1000
+                            }
+                        }],
+                        y: {
+                            max: 100,
+                            min: 0,
+                        }
+                    }
+                }
+            });
+
+            // Receber dados do servidor e atualizar a interface
+            socket.on('update_data', function (data) {
+                document.getElementById('cpu').innerText = data.cpu_percent.toFixed(2);
+                document.getElementById('memory').innerText = data.memory_percent.toFixed(2);
+
+                // Adicionar dados ao gráfico de memória
+                memoryChart.data.labels.push(new Date().toLocaleTimeString());
+                memoryChart.data.datasets[0].data.push(data.memory_percent);
+
+                // Limitar o número de pontos no gráfico para evitar sobrecarga
+                if (memoryChart.data.labels.length > 100) {
+                    memoryChart.data.labels.shift();
+                    memoryChart.data.datasets[0].data.shift();
+                }
+
+                // Atualizar o gráfico
+                memoryChart.update();
+            });
+            socket.on('update_data', function (data) {
+                document.getElementById('cpu').innerText = data.cpu_percent.toFixed(2);
+                document.getElementById('memory').innerText = data.memory_percent.toFixed(2);
+
+                // Adicionar dados ao gráfico de memória
+                memoryChart.data.labels.push(new Date().toLocaleTimeString());
+                memoryChart.data.datasets[0].data.push(data.memory_percent);
+
+                // Limitar o número de pontos no gráfico para evitar sobrecarga
+                if (memoryChart.data.labels.length > 30) {
+                    memoryChart.data.labels.shift();
+                    memoryChart.data.datasets[0].data.shift();
+                }
+
+                // Atualizar o gráfico
+                memoryChart.update();
+            });
+
+        // Lidar com o evento de alerta de memória
+            socket.on('memory_alert', function (data) {
+                alert(data.message);
+            });
+        // Criar um elemento para exibir alertas
+            var alertElement = document.createElement('div');
+                alertElement.setAttribute('id', 'alert');
+                alertElement.style.display = 'none';
+                document.body.insertBefore(alertElement, document.body.firstElementChild);
+
+
+                // Receber dados do servidor e atualizar a interface
+            socket.on('update_data', function (data) {
+                document.getElementById('cpu').innerText = data.cpu_percent.toFixed(2);
+                document.getElementById('memory').innerText = data.memory_percent.toFixed(2);
+
+                // Adicionar dados ao gráfico de memória
+                memoryChart.data.labels.push(new Date().toLocaleTimeString());
+                memoryChart.data.datasets[0].data.push(data.memory_percent);
+
+                // Limitar o número de pontos no gráfico para evitar sobrecarga
+                if (memoryChart.data.labels.length > 20) {
+                    memoryChart.data.labels.shift();
+                    memoryChart.data.datasets[0].data.shift();
+                }
+
+                // Atualizar o gráfico
+                memoryChart.update();
+
+                // Verificar se o uso de memória é maior ou igual a 80%
+                if (data.memory_percent >= 80) {
+                    showAlert('Alerta: Uso de memória está alto!');
+                }
+            });
+
+            // Função para mostrar o alerta
+            function showAlert(message) {
+                alertElement.innerText = message;
+                alertElement.style.display = 'block';
+
+                // Esconder o alerta após 5 segundos
+                setTimeout(function () {
+                    alertElement.style.display = 'none';
+                }, 5000);
+            }
+        </script>
+</body>
+</html>
